@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <sys/sysinfo.h>
-#include "../workdirectory/pigpio.h"
-//#include <pigpio.h>
+//#include "../workdirectory/pigpio.h"
+#include <pigpio.h>
 
 
 int main() {
@@ -27,3 +27,4 @@ int main() {
     gpioTerminate(); 
     return 0;
 }
+
