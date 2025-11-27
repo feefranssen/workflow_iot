@@ -10,19 +10,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout code
-      - name: Checkout repository
+      # 1️⃣ Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
-        
-      - name: Debug container files
-        run: |
-          docker run --rm \
-          -v ${{ github.workspace }}:/work \
-          --platform=linux/arm \
-          feest_builder \
-          bash -c "ls -l /work"
-  
-      # 2️⃣ Setup QEMU voor ARM builds
+
+      # 2️⃣ Setup QEMU en Buildx voor ARM cross-builds
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -38,11 +30,10 @@ jobs:
       - name: Compile in container
         run: |
           docker run --rm \
-          -v ${{ github.workspace }}:/work \
-          --platform=linux/arm \
-          feest_builder \
-          bash -c "cd /work && ls -l && gcc -c pigpio/*.c && ar rcs libpigpio.a *.o && gcc main.c -L. -lpigpio -o main"
-
+            -v ${{ github.workspace }}:/work \
+            --platform=linux/arm \
+            feest_builder \
+            bash -c "cd /work && ls -l && ls -l pigpio && gcc -c pigpio/*.c && ar rcs libpigpio.a *.o && gcc main.c -L. -lpigpio -o main"
 
       # 5️⃣ Upload SSH key
       - name: Add SSH key
