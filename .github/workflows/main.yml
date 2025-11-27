@@ -39,11 +39,11 @@ jobs:
               gcc main.c -L. -lpigpio -o main
             "
 
-      # 5️⃣ Set up SSH key
       - name: Add SSH key
         uses: webfactory/ssh-agent@v0.9.1
         with:
-          ssh-private-key: ${{ secrets.PI_KEY }}
+             ssh-private-key: ${{ secrets.PI_SSH_KEY }}
+
 
       # 6️⃣ Upload executable to Raspberry Pi
       - name: Upload main to Raspberry Pi
