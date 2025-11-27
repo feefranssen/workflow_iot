@@ -10,52 +10,46 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repository
+      #  Checkout repository
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2️⃣ Setup QEMU en Buildx voor ARM cross-builds
+      #  Set up QEMU for ARM cross-compilation
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v2
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      # 3️⃣ Build Docker image
+      #  Build Docker image for ARM
       - name: Build Docker image
         run: |
           docker build -t feest_builder --platform=linux/arm .
 
-      # 4️⃣ Compile code in container
-      - name: Compile in container
+      # Compile inside Docker
+      - name: Compile executable
         run: |
-          docker run --rm \
-            -v ${{ github.workspace }}:/work \
-            --platform=linux/arm \
-            feest_builder \
-            bash -c "cd /work && ls -l && ls -l pigpio && gcc -c pigpio/*.c && ar rcs libpigpio.a *.o && gcc main.c -L. -lpigpio -o main"
+          docker run --rm -v ${{ github.workspace }}:/work feest_builder bash -c "
+            cd /work
+            gcc -c -I./pigpio pigpio/*.c
+            ar rcs libpigpio.a pigpio/*.o
+            gcc main.c -I./pigpio -L. -lpigpio -o main
+          "
 
-      # 5️⃣ Upload SSH key
+      # Set up SSH key
       - name: Add SSH key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.PI_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
+        uses: webfactory/ssh-agent@v0.8.1
+        with:
+          ssh-private-key: ${{ secrets.PI_SSH_KEY }}
 
-      # 6️⃣ Copy executable to Raspberry Pi
-      - name: Upload executable
+      #  Upload executable to Raspberry Pi
+      - name: Upload main to Raspberry Pi
         run: |
-          scp -o StrictHostKeyChecking=no \
-            ./main \
-            ${{ secrets.PI_USER }}@${{ secrets.PI_HOST }}:/home/${{ secrets.PI_USER }}/main
+          scp -o StrictHostKeyChecking=no main ${{ secrets.PI_USER }}@${{ secrets.PI_HOST }}:/home/${{ secrets.PI_USER }}/
 
-      # 7️⃣ Restart program via tmux
-      - name: Restart app via tmux
+      #  Restart program in tmux on Pi
+      - name: Restart program on Raspberry Pi
         run: |
-          ssh -o StrictHostKeyChecking=no \
-            ${{ secrets.PI_USER }}@${{ secrets.PI_HOST }} << 'EOF'
-              cd /home/${{ secrets.PI_USER }}
-              chmod +x main
-              tmux kill-session -t feest || true
-              tmux new -d -s feest "sudo /home/${{ secrets.PI_USER }}/main"
+          ssh -o StrictHostKeyChecking=no ${{ secrets.PI_USER }}@${{ secrets.PI_HOST }} << 'EOF'
+            cd /home/${{ secrets.PI_USER }}
+            chmod +x main
+            tmux kill-session -t app || true
+            tmux new -d -s app './main'
           EOF
