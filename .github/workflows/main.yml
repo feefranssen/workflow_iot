@@ -10,65 +10,52 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repository
+      # 1️⃣ Checkout code
       - name: Checkout repository
         uses: actions/checkout@v4
-           
+
+      # 2️⃣ Setup QEMU voor ARM builds
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-  
-      # 2️⃣ Build Docker image (ARM)
-      - name: Build ARM Docker image
+
+      # 3️⃣ Build Docker image
+      - name: Build Docker image
         run: |
           docker build -t feest_builder --platform=linux/arm .
 
-      # 3️⃣ Compile inside ARM container
-      - name: Compile code inside ARM container
+      # 4️⃣ Compile code in container
+      - name: Compile in container
         run: |
           docker run --rm \
             -v ${{ github.workspace }}:/work \
             --platform=linux/arm \
             feest_builder \
-            bash -c "
-              cd /work &&
-              gcc -c pigpio/*.c &&
-              ar rcs libpigpio.a *.o &&
-              gcc main.c -L. -lpigpio -o main
-            "
+            bash -c "cd /work && gcc -c pigpio/*.c && ar rcs libpigpio.a *.o && gcc main.c -L. -lpigpio -o main"
 
-      # 4️⃣ Save compiled executable as GitHub artifact (OPTIONEEL)
-      - name: Store executable
-        uses: actions/upload-artifact@v4
-        with:
-          name: main
-          path: ./main
-
-      # 5️⃣ Install SSH client
-      - name: Install SSH client
-        run: sudo apt-get install -y openssh-client
+      # 5️⃣ Upload SSH key
+      - name: Add SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PI_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
 
       # 6️⃣ Copy executable to Raspberry Pi
-      - name: Upload executable to Raspberry Pi
+      - name: Upload executable
         run: |
           scp -o StrictHostKeyChecking=no \
-            main \
+            ./main \
             ${{ secrets.PI_USER }}@${{ secrets.PI_HOST }}:/home/${{ secrets.PI_USER }}/main
 
-      # 7️⃣ Restart program via tmux on the Pi
+      # 7️⃣ Restart program via tmux
       - name: Restart app via tmux
         run: |
           ssh -o StrictHostKeyChecking=no \
             ${{ secrets.PI_USER }}@${{ secrets.PI_HOST }} << 'EOF'
               cd /home/${{ secrets.PI_USER }}
-
               chmod +x main
-
-              # Kill old session if running
               tmux kill-session -t feest || true
-
-              # Start new session
               tmux new -d -s feest "sudo /home/${{ secrets.PI_USER }}/main"
           EOF
