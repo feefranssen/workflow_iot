@@ -1,18 +1,55 @@
-name: GitHub Actions Demo
-run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
-on: [push]
+name: Deploy to Raspberry Pi
+
+on:
+  push:
+    branches:
+      - main
+
 jobs:
-  Explore-GitHub-Actions:
+  build-and-deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
-      - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
-      - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
-      - name: Check out repository code
-        uses: actions/checkout@v5
-      - run: echo "💡 The ${{ github.repository }} repository has been cloned to the runner."
-      - run: echo "🖥️ The workflow is now ready to test your code on the runner."
-      - name: List files in the repository
+      # 1️⃣ Checkout repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2️⃣ Build Docker container for compile environment
+      - name: Build Docker image
         run: |
-          ls ${{ github.workspace }}
-      - run: echo "🍏 This job's status is ${{ job.status }}."
+          docker build -t pi-build-env .
+
+      # 3️⃣ Compile code inside the Docker container
+      - name: Compile code inside container
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/src \
+            pi-build-env \
+            bash -c "cd /src && make"
+
+      # 4️⃣ Upload compiled executable as an artifact (optioneel)
+      - name: Store artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pi-executable
+          path: ./build/your_executable_name
+
+      # 5️⃣ Install SSH client (nodig voor scp & ssh)
+      - name: Install SSH
+        run: sudo apt-get install -y openssh-client
+
+      # 6️⃣ Copy executable naar Raspberry Pi
+      - name: Upload executable to Raspberry Pi via SCP
+        run: |
+          scp -o StrictHostKeyChecking=no \
+            ./build/your_executable_name \
+            ${{ secrets.PI_USER }}@${{ secrets.PI_HOST }}:/home/${{ secrets.PI_USER }}/app/
+
+      # 7️⃣ Stop running program, start the new one via tmux
+      - name: Restart program on Raspberry Pi
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+            ${{ secrets.PI_USER }}@${{ secrets.PI_HOST }} << 'EOF'
+              tmux kill-session -t app || true
+              tmux new -d -s app '/home/${{ secrets.PI_USER }}/app/your_executable_name'
+          EOF
