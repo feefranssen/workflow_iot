@@ -10,47 +10,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      #  Checkout repository
+      # 1️⃣ Checkout repository
       - name: Checkout code
         uses: actions/checkout@v4
 
-      #  Set up QEMU for ARM cross-compilation
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-
-      #  Build Docker image for ARM
-      - name: Build Docker image
-        run: |
-          docker build -t feest_builder --platform=linux/arm .
-
-      # Compile inside Docker
-      - name: Compile executable
-        run: |
-          docker run --rm -v ${{ github.workspace }}:/work feest_builder bash -c "
-            cd /work
-            gcc -c -I./pigpio pigpio/*.c
-            ar rcs libpigpio.a pigpio/*.o
-            gcc main.c -I./pigpio -L. -lpigpio -o main
-          "
-
-      # SSH key setup
-      - name: Add SSH key
+      # 2️⃣ Start SSH agent en voeg private key toe
+      - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.1
         with:
           ssh-private-key: ${{ secrets.PI_SSH_KEY }}
 
+      # 3️⃣ Build Docker image voor ARM
+      - name: Build Docker image
+        run: |
+          docker build -t feest_builder --platform=linux/arm .
 
-      #  Upload executable to Raspberry Pi
+      # 4️⃣ Compileer code in Docker container
+      - name: Compile code in container
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/work \
+            --workdir /work \
+            feest_builder \
+            /bin/bash -c "gcc -I./pigpio -c pigpio/*.c main.c && ar rcs libpigpio.a pigpio/*.o && gcc main.c -L. -lpigpio -o main"
+
+      # 5️⃣ Upload executable naar Pi
       - name: Upload main to Raspberry Pi
         run: |
-          scp -o StrictHostKeyChecking=no main ${{ secrets.PI_USER }}@${{ secrets.PI_HOST }}:/home/${{ secrets.PI_USER }}/
+          scp -o StrictHostKeyChecking=no main admin@<PI_IP>:/home/admin/
 
-      #  Restart program in tmux on Pi
+      # 6️⃣ Stop oude executable en start nieuwe in tmux
       - name: Restart program on Raspberry Pi
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.PI_USER }}@${{ secrets.PI_HOST }} << 'EOF'
-            cd /home/${{ secrets.PI_USER }}
-            chmod +x main
+          ssh -o StrictHostKeyChecking=no admin@<PI_IP> << 'EOF'
             tmux kill-session -t app || true
-            tmux new -d -s app './main'
+            tmux new -d -s app '/home/admin/main'
           EOF
