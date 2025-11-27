@@ -1,4 +1,4 @@
-name: Deploy to Raspberry Pi
+name: Feest
 
 on:
   push:
@@ -11,45 +11,58 @@ jobs:
 
     steps:
       # 1️⃣ Checkout repository
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Build Docker container for compile environment
-      - name: Build Docker image
+      # 2️⃣ Build Docker image (ARM)
+      - name: Build ARM Docker image
         run: |
-          docker build -t pi-build-env .
+          docker build -t feest_builder --platform=linux/arm .
 
-      # 3️⃣ Compile code inside the Docker container
-      - name: Compile code inside container
+      # 3️⃣ Compile inside ARM container
+      - name: Compile code inside ARM container
         run: |
           docker run --rm \
-            -v ${{ github.workspace }}:/src \
-            pi-build-env \
-            bash -c "cd /src && make"
+            -v ${{ github.workspace }}:/work \
+            --platform=linux/arm \
+            feest_builder \
+            bash -c "
+              cd /work &&
+              gcc -c pigpio/*.c &&
+              ar rcs libpigpio.a *.o &&
+              gcc main.c -L. -lpigpio -o main
+            "
 
-      # 4️⃣ Upload compiled executable as an artifact (optioneel)
-      - name: Store artifact
+      # 4️⃣ Save compiled executable as GitHub artifact (OPTIONEEL)
+      - name: Store executable
         uses: actions/upload-artifact@v4
         with:
-          name: pi-executable
-          path: ./build/your_executable_name
+          name: main
+          path: ./main
 
-      # 5️⃣ Install SSH client (nodig voor scp & ssh)
-      - name: Install SSH
+      # 5️⃣ Install SSH client
+      - name: Install SSH client
         run: sudo apt-get install -y openssh-client
 
-      # 6️⃣ Copy executable naar Raspberry Pi
-      - name: Upload executable to Raspberry Pi via SCP
+      # 6️⃣ Copy executable to Raspberry Pi
+      - name: Upload executable to Raspberry Pi
         run: |
           scp -o StrictHostKeyChecking=no \
-            ./build/your_executable_name \
-            ${{ secrets.PI_USER }}@${{ secrets.PI_HOST }}:/home/${{ secrets.PI_USER }}/app/
+            main \
+            ${{ secrets.PI_USER }}@${{ secrets.PI_HOST }}:/home/${{ secrets.PI_USER }}/main
 
-      # 7️⃣ Stop running program, start the new one via tmux
-      - name: Restart program on Raspberry Pi
+      # 7️⃣ Restart program via tmux on the Pi
+      - name: Restart app via tmux
         run: |
           ssh -o StrictHostKeyChecking=no \
             ${{ secrets.PI_USER }}@${{ secrets.PI_HOST }} << 'EOF'
-              tmux kill-session -t app || true
-              tmux new -d -s app '/home/${{ secrets.PI_USER }}/app/your_executable_name'
+              cd /home/${{ secrets.PI_USER }}
+
+              chmod +x main
+
+              # Kill old session if running
+              tmux kill-session -t feest || true
+
+              # Start new session
+              tmux new -d -s feest "sudo /home/${{ secrets.PI_USER }}/main"
           EOF
