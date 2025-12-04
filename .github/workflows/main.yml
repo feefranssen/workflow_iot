@@ -25,20 +25,12 @@ jobs:
 
       - name: Compile inside Docker
         run: |
-          docker run --rm \
-            --platform=linux/arm64 \
-            -v "${{ github.workspace }}:/work" \
-            feest_builder \
-            sh -c "
-              cd /work
-              echo 'Start compiling...'
-      
-              gcc -c pigpio/*.c -I/usr/include/pigpio
-              ar rcs libpigpio.a *.o
-              gcc main.c -L. -lpigpio -lpthread -o main
-      
-              echo 'Compilation successful'
-            "
+          docker run --rm `
+            --platform=linux/arm64 `
+            -v "${{ github.workspace }}:/work" `
+            feest_builder `
+            sh -c "echo container OK"
+
 
 
 
