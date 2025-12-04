@@ -25,7 +25,7 @@ jobs:
 
       - name: Compile inside Docker
         run: |
-          docker run --rm `
+          docker run -it --rm `
             -v "${{ github.workspace }}:/work" `
             --platform=linux/arm64 `
             feest_builder /bin/sh -c "cd /work && \
