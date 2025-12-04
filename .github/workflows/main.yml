@@ -25,15 +25,21 @@ jobs:
 
       - name: Compile inside Docker
         run: |
-          docker run -it --rm `
-            -v "${{ github.workspace }}:/work" `
-            --platform=linux/arm64 `
-            feest_builder /bin/sh -c "cd /work && \
-              echo 'Start compiling...' && \
-              gcc -c pigpio/*.c && \
-              ar rcs libpigpio.a *.o && \
-              gcc main.c -L. -lpigpio -o main && \
-              echo 'Compilation OK'"
+          docker run --rm \
+            --platform=linux/arm64 \
+            -v "${{ github.workspace }}:/work" \
+            feest_builder \
+            sh -c "
+              cd /work
+              echo 'Start compiling...'
+      
+              gcc -c pigpio/*.c -I/usr/include/pigpio
+              ar rcs libpigpio.a *.o
+              gcc main.c -L. -lpigpio -lpthread -o main
+      
+              echo 'Compilation successful'
+            "
+
 
 
       - name: Add SSH key
