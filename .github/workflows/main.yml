@@ -30,7 +30,7 @@ jobs:
       # 4️⃣ Compile code in container
       - name: Compile inside Docker
         run: |
-          docker run --rm -v ${{ github.workspace }}:/work feest_builder \
+          docker run --rm -v ${{ github.workspace }}:/work --platform=linux/arm64 feest_builder \
             bash -c "
               cd /work
               ls -l
