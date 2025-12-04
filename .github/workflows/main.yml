@@ -25,8 +25,14 @@ jobs:
 
       - name: Compile inside Docker
         run: |
-          docker run --rm -v "${{ github.workspace }}:/work" --platform=linux/arm64 feest_builder \
-            bash -c "cd /work && ls -l && ls -l pigpio && gcc -c pigpio/*.c && ar rcs libpigpio.a *.o && gcc main.c -L. -lpigpio -o main"
+          docker run --rm -v ${{ github.workspace }}:/work --platform=linux/arm64 feest_builder \
+            bash -c "
+              cd /work
+              gcc -c pigpio/*.c -I/usr/include/pigpio
+              ar rcs libpigpio.a *.o
+              gcc main.c -L. -lpigpio -lpthread -o main
+            "
+
 
       - name: Add SSH key
         uses: webfactory/ssh-agent@v0.9.1
