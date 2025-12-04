@@ -25,7 +25,7 @@ jobs:
 
       # 3️⃣ Build Docker image
       - name: Build Docker image
-        run: docker build -t feest_builder .
+        run : docker build --platform=linux/arm64 -t feest_builder .
 
       # 4️⃣ Compile code in container
       - name: Compile inside Docker
