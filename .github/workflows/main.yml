@@ -23,14 +23,13 @@ jobs:
       - name: Build Docker image
         run: docker build --platform=linux/arm64 -t feest_builder .
         
-      - name: Compile inside Docker (visible container)
-        shell: pwsh
+      - name: Compile inside Docker
         run: |
-          docker run `
-            --name feest_container `
-            --platform=linux/arm64 `
-            -v "${{ github.workspace }}:/work" `
-            feest_builder `
+          docker run \
+            --name feest_container \
+            --platform=linux/arm64 \
+            -v ${GITHUB_WORKSPACE}:/work \
+            feest_builder \
             sh -c "
               cd /work
               echo 'Start compiling...'
@@ -39,6 +38,7 @@ jobs:
               gcc main.c -L. -lpigpio -lpthread -o main
               echo 'Compilation successful'
             "
+
 
       - name: Add SSH key
         uses: webfactory/ssh-agent@v0.9.1
