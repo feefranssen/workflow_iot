@@ -1,57 +1,18 @@
-name: Feest
-
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-  
+name: GitHub Actions Demo
+run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
+on: [push]
 jobs:
-  build-and-deploy:
-    runs-on: self-hosted
-    defaults:
-      run:
-        shell: cmd
-    
+  Explore-GitHub-Actions:
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build Docker image
-        run: docker build --platform=linux/arm64 -t feest_builder .
-        
-      - name: Compile inside Docker
+      - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
+      - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
+      - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
+      - name: Check out repository code
+        uses: actions/checkout@v5
+      - run: echo "💡 The ${{ github.repository }} repository has been cloned to the runner."
+      - run: echo "🖥️ The workflow is now ready to test your code on the runner."
+      - name: List files in the repository
         run: |
-          docker run --rm -v ${{ github.workspace }}:/work feest_builder \
-            bash -c "
-              cd /work
-              echo 'Start compiling...'
-              gcc -c pigpio/*.c -I/usr/include/pigpio
-              ar rcs libpigpio.a *.o
-              gcc main.c -L. -lpigpio -lpthread -o main
-              echo 'Compilation successful'
-            "
-
-      - name: Add SSH key
-        uses: webfactory/ssh-agent@v0.9.1
-        with:
-             ssh-private-key: ${{ secrets.PI_SSH_KEY }}
-
-      - name: Upload main to Raspberry Pi
-        run: |
-          scp -o StrictHostKeyChecking=no ./main ${{ secrets.PI_USER }}@${{ secrets.PI_HOST }}:/home/${{ secrets.PI_USER }}/main
-
-      - name: Restart program on Raspberry Pi
-        run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.PI_USER }}@${{ secrets.PI_HOST }} << 'EOF'
-            cd /home/${{ secrets.PI_USER }}
-            chmod +x main
-            tmux kill-session -t feest || true
-            tmux new -d -s feest "./main"
-          EOF
+          ls ${{ github.workspace }}
+      - run: echo "🍏 This job's status is ${{ job.status }}."
